@@ -41,5 +41,4 @@ void TraversePath(const std::string& path,
 }  // namespace embedding
 }  // namespace deeplearning
 
-
 #endif  // UTIL_UTIL_H_

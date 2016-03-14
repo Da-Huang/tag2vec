@@ -18,10 +18,8 @@ namespace deeplearning {
 namespace embedding {
 
 class Tag2Vec final : public Model {
- private:
-  class Random;
-
  public:
+  class Random;
   using RMatrixXf =
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 
