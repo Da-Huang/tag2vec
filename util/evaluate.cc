@@ -22,7 +22,7 @@ void Evaluate(Model* model, DocumentIterator* test_data) {
 }
 
 void Evaluate(Model* model, const std::vector<Document>& test_data) {
-  size_t num_correct = 0, num_total = 0;
+  size_t num_correct = 0, num_suggested = 0;
 
   #pragma omp parallel for
   for (size_t i = 0; i < test_data.size(); ++i) {
@@ -37,17 +37,17 @@ void Evaluate(Model* model, const std::vector<Document>& test_data) {
     }
 
     #pragma omp atomic update
-    num_total += test_data[i].tags().size();
+    num_suggested += suggested_tags.size();
 
     static const size_t DISPLAY_NUM = 1000;
-    if (num_total / DISPLAY_NUM >
-        (num_total - test_data[i].tags().size()) / DISPLAY_NUM) {
-      LOG(INFO) << "Suggested " << num_total
-                << " tags. p@1=" << (float)num_correct / num_total;
+    if (num_suggested / DISPLAY_NUM >
+        (num_suggested - test_data[i].tags().size()) / DISPLAY_NUM) {
+      LOG(INFO) << "Suggested " << num_suggested
+                << " tags. p@1=" << (float)num_correct / num_suggested;
     }
   }
-  LOG(INFO) << "Suggested " << num_total
-            << " tags. p@1=" << (float)num_correct / num_total;
+  LOG(INFO) << "Suggested " << num_suggested
+            << " tags. p@1=" << (float)num_correct / num_suggested;
 }
 
 

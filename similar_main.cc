@@ -61,6 +61,11 @@ void Test(const std::string& model_path) {
   LOG(INFO) << words << ":";
   ans = tag2vec.MostSimilar(tag2vec.Infer(util::Split(words, " "), 10), 10);
   PrintScoreItemVec(ans);
+
+  words = "music";
+  LOG(INFO) << words << ":";
+  ans = tag2vec.MostSimilar(tag2vec.Infer(util::Split(words, " "), 10), 10);
+  PrintScoreItemVec(ans);
 }
 
 }  // namespace

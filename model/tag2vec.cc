@@ -53,34 +53,24 @@ void Tag2Vec::Train(const std::vector<Document>& documents, size_t iter) {
       << "Size of tag_vocab should be at least 1.";
   CHECK(word_vocab_.items_size() >= 1)
       << "Size of word_vocab should be at least 1.";
-
   LOG(INFO) << "Vocabularies for words and tags have been built.";
 
   // Initializes weights.
   std::uniform_real_distribution<float> dist(-0.5, 0.5);
-  static const auto uniform =
+  const auto uniform =
       [&dist, this](size_t) { return dist(this->random_->engine()); };
   size_t tag_dim = tag_vocab_.items_size();
-  tagi_ =
-      RMatrixXf::NullaryExpr(tag_dim, layer_size_, uniform) / (float)tag_dim;
+  tagi_ = RMatrixXf::NullaryExpr(tag_dim, layer_size_, uniform) / layer_size_;
   size_t word_dim = word_vocab_.items_size() - 1;
-  wordo_ =
-      RMatrixXf::NullaryExpr(word_dim, layer_size_, uniform) / (float)word_dim;
-
+  wordo_ = RMatrixXf::NullaryExpr(word_dim, layer_size_, uniform) / layer_size_;
   LOG(INFO) << "Weights have been initialized.";
 
-  std::vector<size_t> doc_index_vec(documents.size());
-  std::iota(doc_index_vec.begin(), doc_index_vec.end(), 0);
   float alpha = init_alpha_;
   size_t num_words = 0;
-
   for (size_t t = 0; t < iter; ++t) {
-    std::shuffle(doc_index_vec.begin(), doc_index_vec.end(), random_->engine());
-
     #pragma omp parallel for
-    for (size_t i = 0; i < doc_index_vec.size(); ++i) {
-      int doc_index = doc_index_vec[i];
-      const Document& document = documents[doc_index];
+    for (size_t i = 0; i < documents.size(); ++i) {
+      const Document& document = documents[i];
 
       // Gets words and tags.
       std::vector<const Vocabulary::Item*> word_vec, tag_vec;
@@ -129,7 +119,7 @@ void Tag2Vec::Train(DocumentIterator* iterator, size_t iter) {
 }
 
 std::vector<ScoreItem> Tag2Vec::Suggest(const std::vector<std::string>& words) {
-  return MostSimilar(Infer(words, 10), 1);
+  return MostSimilar(Infer(words, 5), 1);
 }
 
 bool Tag2Vec::ContainsTag(const std::string& tag) const {
@@ -142,7 +132,7 @@ Eigen::VectorXf Tag2Vec::TagVec(const std::string& tag) const {
 
 std::vector<ScoreItem> Tag2Vec::MostSimilar(const Eigen::VectorXf& v,
                                             size_t limit) const {
-  static const auto greater_score_item =
+  const auto greater_score_item =
       [](const ScoreItem& si1, const ScoreItem& si2) { return si1 > si2; };
   std::vector<ScoreItem> ans;
   for (const Vocabulary::Item* item : tag_vocab_.items()) {
@@ -162,13 +152,15 @@ std::vector<ScoreItem> Tag2Vec::MostSimilar(const Eigen::VectorXf& v,
 Eigen::RowVectorXf Tag2Vec::Infer(const std::vector<std::string>& words,
                                   size_t iter) {
   std::uniform_real_distribution<float> dist(-0.5, 0.5);
-  Tag2Vec::RMatrixXf ans(1, tagi_.cols());
-  ans.setZero();
+  const auto uniform =
+      [&dist, this](size_t) { return dist(this->random_->engine()); };
+  RMatrixXf ans = RMatrixXf::NullaryExpr(1, layer_size_, uniform) / layer_size_;
 
   // Gets words.
   std::vector<const Vocabulary::Item*> word_vec;
   GetVocabularyItemVec(word_vocab_, words, &word_vec);
   DownSample(&word_vec);
+
   float alpha = init_alpha_;
 
   for (size_t t = 0; t < iter; ++t) {
