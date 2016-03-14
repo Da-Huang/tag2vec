@@ -16,6 +16,7 @@ namespace embedding {
 class Tag2Vec::Random final {
  public:
   Random();
+  Random(size_t window);
   Random(const Random& random) = delete;
   ~Random();
 
@@ -23,9 +24,12 @@ class Tag2Vec::Random final {
 
   float Sample();
 
+  float Window();
+
  private:
   std::mt19937_64 engine_;
   std::uniform_real_distribution<float>* sample_ = nullptr;  // OWNED
+  std::uniform_int_distribution<size_t>* window_ = nullptr;  // OWNED
 };
 
 void BuildWordVocabulary(DocumentIterator* iterator, size_t min_count,

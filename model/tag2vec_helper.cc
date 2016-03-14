@@ -22,14 +22,26 @@ Tag2Vec::Random::Random() {
   sample_ = new std::uniform_real_distribution<float>(0, 1);
 }
 
+Tag2Vec::Random::Random(size_t window) : Random() {
+  window_ = new std::uniform_int_distribution<size_t>(0, window);
+}
+
 Tag2Vec::Random::~Random() {
   if (sample_) delete sample_;
+  if (window_) delete window_;
 }
 
 float Tag2Vec::Random::Sample() {
   float ans = 0;
   #pragma omp critical(Tag2VecRandom)
   ans = (*sample_)(engine_);
+  return ans;
+}
+
+float Tag2Vec::Random::Window() {
+  float ans = 0;
+  #pragma omp critical(Tag2VecRandom)
+  ans = (*window_)(engine_);
   return ans;
 }
 
