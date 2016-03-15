@@ -93,6 +93,15 @@ void TrainSgPair(Tag2Vec::RMatrixXf::RowXpr input, Tag2Vec::RMatrixXf& output,
                  const std::vector<bool>& codes,
                  const std::vector<size_t>& points, float alpha,
                  bool update_output) {
+  Eigen::VectorXf neu1e = TrainHs(input, output, codes, points, alpha, update_output);
+  input += neu1e;
+}
+
+Eigen::VectorXf TrainHs(Tag2Vec::RMatrixXf::RowXpr input,
+                        Tag2Vec::RMatrixXf& output,
+                        const std::vector<bool>& codes,
+                        const std::vector<size_t>& points, float alpha,
+                        bool update_output) {
   Eigen::VectorXf neu1e(input.size());
   neu1e.setZero();
   for (size_t i = 0; i < codes.size(); ++i) {
@@ -104,7 +113,7 @@ void TrainSgPair(Tag2Vec::RMatrixXf::RowXpr input, Tag2Vec::RMatrixXf& output,
       output.row(points[i]) += g * input;
     }
   }
-  input += neu1e;
+  return neu1e;
 }
 
 }  // namespace embedding
