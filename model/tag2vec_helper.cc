@@ -97,7 +97,7 @@ void TrainSgPair(Tag2Vec::RMatrixXf::RowXpr input, Tag2Vec::RMatrixXf& output,
   input += neu1e;
 }
 
-Eigen::VectorXf TrainHs(Tag2Vec::RMatrixXf::RowXpr input,
+Eigen::VectorXf TrainHs(const Tag2Vec::RMatrixXf::RowXpr& input,
                         Tag2Vec::RMatrixXf& output,
                         const std::vector<bool>& codes,
                         const std::vector<size_t>& points, float alpha,

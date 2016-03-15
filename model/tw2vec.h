@@ -59,9 +59,9 @@ class Tw2Vec final : public Model {
   Tag2Vec::Random* random_ = nullptr;  // OWNED
 
   Vocabulary word_vocab_, tag_vocab_;
-  util::Huffman word_huffman_;
+  util::Huffman word_huffman_, tag_huffman_;
 
-  Tag2Vec::RMatrixXf tagi_, wordi_, wordo_;
+  Tag2Vec::RMatrixXf tagi_, wordi_, tago_, wordo_;
 };
 
 }  // namespace embedding

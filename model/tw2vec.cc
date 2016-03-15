@@ -46,6 +46,7 @@ void Tw2Vec::Train(const std::vector<Document>& documents, size_t iter) {
   CHECK(!has_trained_) << "Tw2Vec has already been trained.";
   MemoryDocumentIterator iterator(documents);
   BuildTagVocabulary(&iterator, &tag_vocab_);
+  tag_huffman_.Build(tag_vocab_.items());
   iterator.Reset();
   BuildWordVocabulary(&iterator, min_count_, 0 /* sample */, &word_vocab_);
   word_huffman_.Build(word_vocab_.items());
@@ -60,14 +61,18 @@ void Tw2Vec::Train(const std::vector<Document>& documents, size_t iter) {
   std::uniform_real_distribution<float> dist(-0.5, 0.5);
   const auto uniform =
       [&dist, this](size_t) { return dist(this->random_->engine()); };
-  size_t tag_dim = tag_vocab_.items_size();
-  tagi_ = Tag2Vec::RMatrixXf::NullaryExpr(tag_dim, layer_size_, uniform) /
+  tagi_ = Tag2Vec::RMatrixXf::NullaryExpr(tag_vocab_.items_size(), layer_size_,
+                                          uniform) /
           layer_size_;
-  size_t word_dim = word_vocab_.items_size() - 1;
-  wordo_ = Tag2Vec::RMatrixXf::NullaryExpr(word_dim, layer_size_, uniform) /
-           layer_size_;
+  size_t tag_dim = tag_vocab_.items_size() - 1;
+  tago_ = Tag2Vec::RMatrixXf::NullaryExpr(tag_dim, layer_size_, uniform) /
+          layer_size_;
+
   wordi_ = Tag2Vec::RMatrixXf::NullaryExpr(word_vocab_.items_size(),
                                            layer_size_, uniform) /
+           layer_size_;
+  size_t word_dim = word_vocab_.items_size() - 1;
+  wordo_ = Tag2Vec::RMatrixXf::NullaryExpr(word_dim, layer_size_, uniform) /
            layer_size_;
   LOG(INFO) << "Weights have been initialized.";
 
@@ -86,23 +91,33 @@ void Tw2Vec::Train(const std::vector<Document>& documents, size_t iter) {
       // Trains document.
       for (const Vocabulary::Item* tag : tag_vec) {
         for (size_t i = 0; i < word_vec.size(); ++i) {
+          TrainSgPair(tagi_.row(tag->index()), wordo_,
+                      word_huffman_.codes(word_vec[i]->index()),
+                      word_huffman_.points(word_vec[i]->index()), alpha, true);
 
           size_t reduced_window = window_ - random_->Window();
           size_t left = i >= reduced_window ? i - reduced_window : 0;
           size_t right = std::min(i + reduced_window + 1, word_vec.size());
           for (size_t j = left; j < right; ++j) {
             if (i == j) continue;
-
-            TrainSgPair(tagi_.row(tag->index()), wordo_,
-                        word_huffman_.codes(word_vec[i]->index()),
-                        word_huffman_.points(word_vec[i]->index()), alpha,
-                        true);
-
             TrainSgPair(wordi_.row(word_vec[i]->index()), wordo_,
                         word_huffman_.codes(word_vec[j]->index()),
                         word_huffman_.points(word_vec[j]->index()), alpha,
                         true);
           }
+        }
+
+        Tag2Vec::RMatrixXf mean(1, layer_size_);
+        for (const Vocabulary::Item* word : word_vec) {
+          mean.row(0) += wordi_.row(word->index());
+        }
+        mean /= word_vec.size();
+        Eigen::VectorXf neu1e =
+            TrainHs(mean.row(0), tago_, tag_huffman_.codes(tag->index()),
+                    tag_huffman_.points(tag->index()), alpha, true);
+        neu1e /= word_vec.size();
+        for (const Vocabulary::Item* word : word_vec) {
+          wordi_.row(word->index()) += neu1e;
         }
       }
 
@@ -203,9 +218,11 @@ void Tw2Vec::Write(std::ostream* out) const {
   word_vocab_.Write(out);
   tag_vocab_.Write(out);
   word_huffman_.Write(out);
+  tag_huffman_.Write(out);
 
   util::WriteMatrix(out, tagi_);
   util::WriteMatrix(out, wordi_);
+  util::WriteMatrix(out, tago_);
   util::WriteMatrix(out, wordo_);
 }
 
@@ -221,9 +238,11 @@ void Tw2Vec::Read(std::istream* in, Tw2Vec* tag2vec) {
   Vocabulary::Read<Word>(in, &tag2vec->word_vocab_);
   Vocabulary::Read<Tag>(in, &tag2vec->tag_vocab_);
   util::Huffman::Read(in, &tag2vec->word_huffman_);
+  util::Huffman::Read(in, &tag2vec->tag_huffman_);
 
   util::ReadMatrix(in, &tag2vec->tagi_);
   util::ReadMatrix(in, &tag2vec->wordi_);
+  util::ReadMatrix(in, &tag2vec->tago_);
   util::ReadMatrix(in, &tag2vec->wordo_);
 
   tag2vec->has_trained_ = true;
